@@ -86,6 +86,11 @@ const QHash<QString, Field> &VcfReader::formats() const
     return mFormats;
 }
 
+const QHash<QString, QVariant> &VcfReader::metadata() const
+{
+    return mMetadata;
+}
+
 bool VcfReader::open()
 {
     if (mDevice->open(QIODevice::ReadOnly))
@@ -115,15 +120,34 @@ const Record &VcfReader::record() const
     return mCurrentRecord;
 }
 
+const QStringList &VcfReader::samples() const
+{
+    return mSamples;
+}
+
 void VcfReader::readHeader()
 {
     mMetadata.clear();
     mInfos.clear();
     mFormats.clear();
+    mSamples.clear();
 
     while (!mStream.atEnd())
     {
         QString line = mStream.readLine();
+
+        // Get samples
+        if (line.startsWith("#CHROM"))
+        {
+            QStringList header = line.split(QChar::Tabulation);
+            if (header.size() > 9)
+            {
+                for (int i = 9 ; i< header.size(); ++i)
+                    mSamples.append(header[i]);
+            }
+        }
+
+        // get headers informations
         if (line.startsWith("##")){
 
             if (line.startsWith("##INFO"))
@@ -151,12 +175,14 @@ void VcfReader::readHeader()
                     mFormats.insert(format.id, format);
             }
 
+
+
             if (line.contains(QRegularExpression("^##[^(INFO|ANN)]")))
             {
-                // QRegularExpression ex("^##(.+)=\"(.+)\"$");
-                // QRegularExpressionMatch match = ex.match(line);
-                // if (match.hasMatch())
-                //     mMetadata.insert(match.captured(1), match.captured(2));
+                QRegularExpression ex("^##(.+)=\"(.+)\"$");
+                QRegularExpressionMatch match = ex.match(line);
+                if (match.hasMatch())
+                    mMetadata.insert(match.captured(1), match.captured(2));
             }
 
 
@@ -201,7 +227,7 @@ Record VcfReader::readRecord(const QString &raw)
             if (s.count() == 2)
             {
                 QVariant val;
-               // check if multi values
+                // check if multi values
                 if (s[1].contains(","))
                     val = s[1].split(",");
                 else

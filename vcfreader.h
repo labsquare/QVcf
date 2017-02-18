@@ -68,12 +68,13 @@ public:
     explicit VcfReader(QIODevice * device, QObject * parent = Q_NULLPTR);
     const QHash<QString,Field>& infos() const;
     const QHash<QString,Field>& formats() const;
+    const QHash<QString,QVariant>& metadata() const;
 
     bool open();
     bool next() ;
 
     const Record& record() const;
-
+    const QStringList& samples() const;
 protected:
     void readHeader();
     Record readRecord(const QString& raw);
@@ -86,6 +87,7 @@ private:
     QHash<QString, Field> mInfos;
     QHash<QString, Field> mFormats;
     QHash<QString, QVariant> mMetadata;
+    QStringList mSamples;
     Record mCurrentRecord;
 
 };
