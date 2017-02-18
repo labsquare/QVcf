@@ -46,6 +46,22 @@ quint64 Record::end() const
     return pos() + alt().first().size();
 }
 
+bool Record::isSnp() const
+{
+    if (ref().size() > 1)
+        return false;
+
+    if (alt().size() > 1)
+        return false;
+
+    if (alt().first() == ".")
+        return false;
+
+    return true;
+
+
+}
+
 
 
 

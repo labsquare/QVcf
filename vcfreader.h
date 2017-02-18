@@ -35,6 +35,7 @@ public:
     QStringList alleles() const;
     quint64 start() const;
     quint64 end() const;
+    bool isSnp() const;
 
 
 private:
