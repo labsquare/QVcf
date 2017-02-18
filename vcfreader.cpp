@@ -1,5 +1,36 @@
 #include "vcfreader.h"
 namespace vcf {
+// ============== Record Class ========================================
+Record::Record()
+{
+
+}
+
+Record::Record(const QString &chrom,
+               quint64 pos,
+               const QString &id,
+               const QString &ref,
+               const QStringList &alt,
+               quint64 qual,
+               const QString &filter,
+               const QVariantMap &infos,
+               const QString &format)
+{
+    mChrom = chrom;
+    mPos = pos;
+    mId = id;
+    mRef = ref;
+    mAlt = alt;
+    mQual = qual;
+    mFilter = filter;
+    mInfos = infos;
+    mFormat = format;
+}
+
+
+
+
+// ============== Field Class ========================================
 
 QVariant::Type Field::typeFromString(const QString &type)
 {
@@ -24,6 +55,7 @@ QVariant::Type Field::typeFromString(const QString &type)
 }
 
 
+// ============== VcfReader Class ========================================
 
 VcfReader::VcfReader(QObject *parent)
     :QObject(parent)
@@ -58,6 +90,7 @@ bool VcfReader::open()
 {
     if (mDevice->open(QIODevice::ReadOnly))
     {
+        mStream.setDevice(mDevice);
         readHeader();
         return true;
     }
@@ -66,9 +99,20 @@ bool VcfReader::open()
 
 }
 
-bool VcfReader::next() const
+bool VcfReader::next()
 {
 
+    if (mDevice->atEnd())
+        return false;
+
+    mCurrentRecord = readRecord(mStream.readLine());
+
+    return true;
+}
+
+const Record &VcfReader::record() const
+{
+    return mCurrentRecord;
 }
 
 void VcfReader::readHeader()
@@ -77,15 +121,14 @@ void VcfReader::readHeader()
     mInfos.clear();
     mFormats.clear();
 
-    QTextStream stream(mDevice);
-    while (!stream.atEnd())
+    while (!mStream.atEnd())
     {
-        QString line = stream.readLine();
+        QString line = mStream.readLine();
         if (line.startsWith("##")){
 
             if (line.startsWith("##INFO"))
             {
-                QRegularExpression ex("##INFO=<ID=(.+),Number=(.+),Type=(.+),Description=\"(.+)\".+");
+                QRegularExpression ex("^##INFO=<ID=(.+),Number=(.+),Type=(.+),Description=\"(.+)\".+");
                 QRegularExpressionMatch match = ex.match(line);
                 Field info;
                 info.id = match.captured(1);
@@ -97,7 +140,7 @@ void VcfReader::readHeader()
 
             if (line.startsWith("##FORMAT"))
             {
-                QRegularExpression ex("##FORMAT=<ID=(.+),Number=(.+),Type=(.+),Description=\"(.+)\".+");
+                QRegularExpression ex("^##FORMAT=<ID=(.+),Number=(.+),Type=(.+),Description=\"(.+)\".+");
                 QRegularExpressionMatch match = ex.match(line);
                 Field format;
                 format.id = match.captured(1);
@@ -110,20 +153,71 @@ void VcfReader::readHeader()
 
             if (line.contains(QRegularExpression("^##[^(INFO|ANN)]")))
             {
-                QRegularExpression ex("##(.+)=\"(.+)\"");
-                QRegularExpressionMatch match = ex.match(line);
-                if (match.hasMatch())
-                    mMetadata.insert(match.captured(1), match.captured(2));
+                // QRegularExpression ex("^##(.+)=\"(.+)\"$");
+                // QRegularExpressionMatch match = ex.match(line);
+                // if (match.hasMatch())
+                //     mMetadata.insert(match.captured(1), match.captured(2));
             }
 
 
 
         }
-        else
-            break;
+        else {
+            return;
+
+        }
     }
 
-    mDevice->reset();
+}
+
+Record VcfReader::readRecord(const QString &raw)
+{
+    QStringList row = raw.split(QChar::Tabulation);
+
+    if (row.count() < 8){
+        qWarning()<<Q_FUNC_INFO<<"not enough line. Are you sure it's a VCF?";
+        return Record();
+    }
+    else {
+        QString chrom   = row[0];
+        quint64 pos     = row[1].toInt();
+        QString id      = row[2];
+        QString ref     = row[3];
+        QString alt     = row[4];
+        // Split alternative.. A,C => [A,C]
+        QStringList alts;
+        if (alt.contains(","))
+            alts = alt.split(",");
+        else
+            alts.append(alt);
+
+        quint64 qual    = row[5].toInt();
+        QString filter  = row[6];
+        QVariantMap infos;
+
+        for (QString info : row[7].split(";"))
+        {
+            QStringList s = info.split("=");
+            if (s.count() == 2)
+            {
+                QVariant val;
+               // check if multi values
+                if (s[1].contains(","))
+                    val = s[1].split(",");
+                else
+                    val = s[1];
+                infos.insert(s[0], val);
+            }
+        }
+
+        QString format;
+        Record rec(chrom,pos, id, ref, alts, qual, filter,infos, format);
+        return rec;
+
+    }
+
+
+
 
 }
 

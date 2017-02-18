@@ -10,8 +10,6 @@ TEMPLATE = app
 
 SOURCES += main.cpp \
     vcfreader.cpp \
-    record.cpp
 
 HEADERS += \
     vcfreader.h \
-    record.h
