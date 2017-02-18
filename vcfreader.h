@@ -20,7 +20,8 @@ public:
                     quint64 qual,
                     const QString& filter,
                     const QVariantMap& infos,
-                    const QString& format );
+                    const QString& format = QString(),
+                    const QHash<QString, QVariantMap>& samples = QHash<QString, QVariantMap>());
 
     const QString& chrom()const {return mChrom;}
     quint64 pos()const {return mPos;}
@@ -31,6 +32,10 @@ public:
     const QString& filter()const{return mFilter;}
     const QVariantMap& infos()const{return mInfos;}
     const QString& format()const{ return mFormat;}
+    QStringList alleles() const;
+    quint64 start() const;
+    quint64 end() const;
+
 
 private:
     QString mChrom;
@@ -41,7 +46,9 @@ private:
     quint64 mQual = 0;
     QString mFilter;
     QVariantMap mInfos;
+    QHash<QString, QVariantMap> mSamples;
     QString mFormat;
+
 
 
 

@@ -10,11 +10,12 @@ int main(int argc, char *argv[])
     {
         qDebug()<<reader.infos().keys();
         qDebug()<<reader.metadata().keys();
+        qDebug()<<reader.samples();
 
-//       while (reader.next())
-//       {
-//            qDebug()<<reader.record().alt();
-//       }
+       while (reader.next())
+       {
+           // qDebug()<<reader.record().alt();
+       }
 
 
     }

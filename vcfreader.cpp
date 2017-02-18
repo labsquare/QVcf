@@ -14,7 +14,8 @@ Record::Record(const QString &chrom,
                quint64 qual,
                const QString &filter,
                const QVariantMap &infos,
-               const QString &format)
+               const QString &format,
+               const QHash<QString, QVariantMap>& samples)
 {
     mChrom = chrom;
     mPos = pos;
@@ -25,6 +26,24 @@ Record::Record(const QString &chrom,
     mFilter = filter;
     mInfos = infos;
     mFormat = format;
+    mSamples = samples;
+}
+
+QStringList Record::alleles() const
+{
+    QStringList list;
+    list<<ref()<<alt();
+    return list;
+}
+
+quint64 Record::start() const
+{
+    return pos();
+}
+
+quint64 Record::end() const
+{
+    return pos() + alt().first().size();
 }
 
 
@@ -219,6 +238,7 @@ Record VcfReader::readRecord(const QString &raw)
 
         quint64 qual    = row[5].toInt();
         QString filter  = row[6];
+        // parse INFO
         QVariantMap infos;
 
         for (QString info : row[7].split(";"))
@@ -236,16 +256,33 @@ Record VcfReader::readRecord(const QString &raw)
             }
         }
 
-        QString format;
-        Record rec(chrom,pos, id, ref, alts, qual, filter,infos, format);
-        return rec;
+        // Parse samples if exists
+        if (row.count() > 8)
+        {
+            QString format = row[8];
+            QStringList items = format.split(":");
+            QHash<QString, QVariantMap> samples;
+
+
+            for (int i=9 ; i<row.size(); ++i)
+            {
+                QStringList sampleData = row[i].split(":");
+                QVariantMap data;
+
+                for (int j=0; j<sampleData.size(); ++j)
+                    data.insert(items[j],sampleData[j]);
+
+                samples.insert(mSamples.at(i-9), data);
+            }
+
+            return Record(chrom,pos, id, ref, alts, qual, filter,infos, format, samples);
+
+        }
+        else
+            return Record(chrom,pos, id, ref, alts, qual, filter,infos);
+
+
 
     }
-
-
-
-
 }
-
-
 }
